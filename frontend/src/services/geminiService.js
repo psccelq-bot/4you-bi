@@ -1,9 +1,14 @@
 import { GoogleGenAI } from '@google/genai';
 
 // Initialize the Gemini AI client
-const ai = new GoogleGenAI({
-  apiKey: process.env.REACT_APP_GEMINI_API_KEY
-});
+const getAIClient = () => {
+  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error('Missing REACT_APP_GEMINI_API_KEY');
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * Generate speech audio from text using Gemini TTS
@@ -12,6 +17,11 @@ const ai = new GoogleGenAI({
  */
 export async function generateSpeech(text) {
   try {
+    const ai = getAIClient();
+    if (!ai) {
+      throw new Error('Gemini API not configured');
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-preview-tts',
       contents: [{ parts: [{ text: text }] }],
