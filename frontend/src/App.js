@@ -66,46 +66,7 @@ function App() {
     scrollToBottom();
   }, [advisorMessages, repositoryMessages, isTyping, scrollToBottom]);
 
-  // Generate TTS-optimized response based on sources only
-  const generateSourceBasedResponse = (userText, relevantSources) => {
-    // Check if it's a greeting - respond naturally
-    const greetingWords = ['أهلا', 'مرحبا', 'السلام', 'صباح', 'مساء', 'شكرا', 'hello', 'hi', 'thanks'];
-    const isGreeting = greetingWords.some(word => 
-      userText.toLowerCase().includes(word.toLowerCase())
-    );
-    
-    if (isGreeting) {
-      // Natural TTS-friendly greeting responses
-      const greetings = [
-        'أهلاً وسهلاً فيك. كيف أقدر أساعدك اليوم؟',
-        'يا هلا فيك. خبرني شو تبي تعرف من المصادر المتاحة؟',
-        'أهلاً. أنا هنا لمساعدتك. وش استفسارك؟'
-      ];
-      return greetings[Math.floor(Math.random() * greetings.length)];
-    }
-
-    // Check for thank you
-    if (userText.includes('شكر') || userText.toLowerCase().includes('thank')) {
-      return 'العفو، هذا واجبي. إذا عندك أي استفسار ثاني، أنا موجود.';
-    }
-
-    // Check if sources exist
-    if (!relevantSources || relevantSources.length === 0) {
-      return NO_SOURCES_RESPONSE;
-    }
-
-    // Search in sources
-    const answer = searchInSources(userText, relevantSources);
-    
-    if (answer) {
-      return answer;
-    }
-
-    // No answer found in sources
-    return OUT_OF_SCOPE_RESPONSE;
-  };
-
-  // Handle sending message
+  // Handle sending message - Uses Gemini AI to answer from sources
   const handleSendMessage = async () => {
     if (!inputText.trim() || isTyping) return;
 
@@ -120,6 +81,11 @@ function App() {
       timestamp: new Date()
     };
 
+    // Get current messages for context
+    const currentMessages = activeView === SourceCategory.ADVISOR 
+      ? advisorMessages 
+      : repositoryMessages;
+
     // Add user message
     if (activeView === SourceCategory.ADVISOR) {
       setAdvisorMessages((prev) => [...prev, userMessage]);
@@ -128,9 +94,6 @@ function App() {
     }
 
     setIsTyping(true);
-
-    // Simulate AI response delay
-    await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 1200));
 
     // Get relevant sources based on view
     let relevantSources = [];
@@ -142,22 +105,50 @@ function App() {
       relevantSources = sources.filter(s => s.selected && s.category === SourceCategory.REPOSITORY);
     }
 
-    // Generate response based on sources only
-    const responseText = generateSourceBasedResponse(userText, relevantSources);
+    try {
+      // Generate AI response from sources
+      const responseText = await generateAIResponse(
+        userText, 
+        relevantSources,
+        currentMessages.slice(-6) // Last 6 messages for context
+      );
 
-    const assistantMessage = {
-      id: generateId(),
-      role: 'assistant',
-      text: responseText,
-      timestamp: new Date()
-    };
+      const assistantMessage = {
+        id: generateId(),
+        role: 'assistant',
+        text: responseText,
+        timestamp: new Date()
+      };
 
-    // Add assistant message
-    if (activeView === SourceCategory.ADVISOR) {
-      setAdvisorMessages((prev) => [...prev, assistantMessage]);
-    } else {
-      setRepositoryMessages((prev) => [...prev, assistantMessage]);
+      // Add assistant message
+      if (activeView === SourceCategory.ADVISOR) {
+        setAdvisorMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        setRepositoryMessages((prev) => [...prev, assistantMessage]);
+      }
+
+      // Auto-speak if enabled
+      if (isAutoSpeak) {
+        handleToggleSpeak(assistantMessage.id, responseText);
+      }
+    } catch (error) {
+      console.error('Error generating response:', error);
+      const errorMessage = {
+        id: generateId(),
+        role: 'assistant',
+        text: 'عذراً، حدث خطأ. حاول مرة ثانية.',
+        timestamp: new Date()
+      };
+      
+      if (activeView === SourceCategory.ADVISOR) {
+        setAdvisorMessages((prev) => [...prev, errorMessage]);
+      } else {
+        setRepositoryMessages((prev) => [...prev, errorMessage]);
+      }
+    } finally {
+      setIsTyping(false);
     }
+  };
 
     setIsTyping(false);
 
