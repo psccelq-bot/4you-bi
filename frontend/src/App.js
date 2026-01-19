@@ -121,10 +121,20 @@ function App() {
     setIsTyping(true);
 
     // Simulate AI response delay
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1500));
+    await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 1200));
 
-    // Generate response
-    const responseText = generateMockResponse(userText, activeView === SourceCategory.ADVISOR);
+    // Get relevant sources based on view
+    let relevantSources = [];
+    if (activeView === SourceCategory.ADVISOR) {
+      relevantSources = sources.filter(s => s.selected && s.category === SourceCategory.ADVISOR);
+    } else if (selectedRepoSource) {
+      relevantSources = [selectedRepoSource];
+    } else {
+      relevantSources = sources.filter(s => s.selected && s.category === SourceCategory.REPOSITORY);
+    }
+
+    // Generate response based on sources only
+    const responseText = generateSourceBasedResponse(userText, relevantSources);
 
     const assistantMessage = {
       id: generateId(),
