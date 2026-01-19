@@ -203,6 +203,7 @@ function App() {
 
     // Check if speech synthesis is available
     if (!speechSynthRef.current) {
+      toast.error('متصفحك لا يدعم النطق الصوتي');
       console.warn('Speech synthesis not supported in this browser');
       return;
     }
