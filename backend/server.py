@@ -90,8 +90,8 @@ class ChatResponse(BaseModel):
     response: str
     sessionId: str
 
-# System prompt for 4you assistant
-SYSTEM_PROMPT = """أنت المستشار المعرفي "فور يو"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.
+# System prompt for ALHOOTAH assistant
+SYSTEM_PROMPT = """أنت المستشار المعرفي "ALHOOTAH"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.
 
 طريقتك في الحوار:
 - تحدث وكأنك جالس بجانب الشخص، صديق يفهمه ويدعمه
