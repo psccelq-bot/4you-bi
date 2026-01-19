@@ -1,5 +1,5 @@
 // Mock data for 4you Holding AI Hub
-// Updated with strict source-based knowledge rules
+// Optimized for Natural Text-to-Speech Output
 
 // Source types
 export const SourceType = {
@@ -167,12 +167,12 @@ export const initialSources = [
   }
 ];
 
-// Initial welcome messages - Updated for 4you identity
+// Initial welcome messages - TTS optimized
 export const getInitialAdvisorMessages = () => [
   {
     id: 'w-adv',
     role: 'assistant',
-    text: 'أهلا بك، أنا 4you مساعدك المعرفي. يسعدني مساعدتك في الإجابة على استفساراتك بناء على المصادر المتاحة لدي. كيف يمكنني خدمتك اليوم؟',
+    text: 'أهلاً وسهلاً فيك. أنا فور يو، مساعدك المعرفي. خليني أساعدك في أي استفسار عندك من المصادر المتاحة.',
     timestamp: new Date()
   }
 ];
@@ -181,16 +181,16 @@ export const getInitialRepositoryMessages = () => [
   {
     id: 'w-repo',
     role: 'assistant',
-    text: 'أهلا بك في المكتبة الرقمية. أنا 4you جاهز لمساعدتك في تحليل واستخراج المعلومات من الوثائق المتاحة. اختر المصدر الذي تريد الاستفسار عنه.',
+    text: 'أهلاً فيك في المكتبة الرقمية. اختر المصدر اللي تبي تستفسر عنه، وأنا جاهز أساعدك.',
     timestamp: new Date()
   }
 ];
 
-// Response when question is outside sources
-export const OUT_OF_SCOPE_RESPONSE = 'اعتذر منك عزيزي ... هذا خارج موضوعنا';
+// Response when question is outside sources - TTS friendly
+export const OUT_OF_SCOPE_RESPONSE = 'اعتذر منك عزيزي، هذا الموضوع خارج نطاق المصادر المتاحة عندي.';
 
 // Response when no sources are available
-export const NO_SOURCES_RESPONSE = 'لا توجد مصادر متاحة حالياً. يرجى رفع المصادر أولاً حتى أتمكن من مساعدتك.';
+export const NO_SOURCES_RESPONSE = 'حالياً ما عندي مصادر متاحة. لو تكرمت ارفع المصادر أول، وبعدها أقدر أساعدك.';
 
 // Helper function to generate unique IDs
 export const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -219,14 +219,90 @@ export const getThemeClasses = (theme) => {
   }
 };
 
-// Admin password (in real app, this would be server-side)
+// Admin password
 export const ADMIN_PASSWORD = '4you2025';
 
 /**
- * Search for answer in sources content
+ * TTS-Optimized Response Templates
+ * Natural, conversational Arabic phrases for voice output
+ */
+const TTS_TEMPLATES = {
+  // Opening phrases - calm and confident
+  openings: [
+    'طيب، خليني أوضح لك.',
+    'ببساطة،',
+    'حسب الموجود في المستند،',
+    'تمام، بالنسبة لسؤالك،',
+    'أكيد، خليني أفيدك.',
+  ],
+  
+  // Transition phrases
+  transitions: [
+    'وكمان،',
+    'بالإضافة لذلك،',
+    'ومن ناحية ثانية،',
+    'وبخصوص،',
+  ],
+  
+  // Closing phrases - supportive
+  closings: [
+    'هل في شي ثاني تبي تعرفه؟',
+    'إذا عندك أي استفسار ثاني، أنا موجود.',
+    'تبي أوضح لك أكثر؟',
+    'في شي ثاني أقدر أساعدك فيه؟',
+  ],
+  
+  // Salary related
+  salary: {
+    intro: 'بالنسبة للراتب،',
+    details: [
+      'يتم صرف الراتب في اليوم السابع والعشرين من كل شهر.',
+      'الراتب يشمل الأساسي مع البدلات.',
+    ]
+  },
+  
+  // Leave related
+  leave: {
+    intro: 'بخصوص الإجازات،',
+    details: [
+      'الإجازة السنوية ثلاثين يوم عمل.',
+      'تقدر تقدم طلب الإجازة من خلال النظام الإلكتروني أو عن طريق مديرك المباشر.',
+    ]
+  },
+  
+  // Insurance related
+  insurance: {
+    intro: 'بالنسبة للتأمين الطبي،',
+    details: [
+      'التأمين شامل لك ولعائلتك.',
+      'يغطي الزوجة والأبناء حتى عمر خمسة وعشرين سنة.',
+    ]
+  },
+  
+  // Working hours
+  hours: {
+    intro: 'بخصوص ساعات العمل،',
+    details: [
+      'الدوام الرسمي من الثامنة صباحاً حتى الرابعة مساءً.',
+      'أيام العمل من الأحد إلى الخميس.',
+    ]
+  },
+  
+  // Allowances
+  allowances: {
+    intro: 'بالنسبة للبدلات،',
+    details: [
+      'بدل السكن خمسة وعشرين بالمئة من الراتب الأساسي.',
+      'وبدل النقل عشرة بالمئة.',
+    ]
+  }
+};
+
+/**
+ * Search for answer in sources and format for TTS
  * @param {string} query - User's question
  * @param {Array} sources - Available sources
- * @returns {string|null} - Found answer or null
+ * @returns {string|null} - TTS-optimized answer or null
  */
 export const searchInSources = (query, sources) => {
   if (!sources || sources.length === 0) {
@@ -236,55 +312,90 @@ export const searchInSources = (query, sources) => {
   const queryLower = query.toLowerCase();
   const queryArabic = query;
   
-  // Keywords to search for
-  const keywords = {
-    salary: ['راتب', 'رواتب', 'معاش', 'صرف', 'الراتب', 'salary', 'pay'],
-    leave: ['إجازة', 'إجازات', 'اجازة', 'عطلة', 'leave', 'vacation', 'holiday'],
-    insurance: ['تأمين', 'طبي', 'صحي', 'insurance', 'medical', 'health'],
-    allowance: ['بدل', 'بدلات', 'سكن', 'نقل', 'allowance', 'housing', 'transport'],
-    hours: ['ساعات', 'دوام', 'عمل', 'وقت', 'hours', 'work', 'time'],
-    training: ['تدريب', 'تطوير', 'دورات', 'training', 'development'],
-    evaluation: ['تقييم', 'أداء', 'evaluation', 'performance'],
-    attendance: ['حضور', 'انصراف', 'تأخير', 'attendance'],
-    resignation: ['استقالة', 'نهاية الخدمة', 'مكافأة', 'resignation', 'end of service']
-  };
-
   // Combine all source content
   const allContent = sources
     .filter(s => s.selected)
     .map(s => s.content)
     .join('\n');
 
-  // Check which category the question falls into
-  for (const [category, words] of Object.entries(keywords)) {
-    const matched = words.some(word => 
-      queryLower.includes(word.toLowerCase()) || queryArabic.includes(word)
-    );
-    
-    if (matched) {
-      // Search for relevant content
-      const lines = allContent.split('\n').filter(line => line.trim());
-      const relevantLines = [];
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const lineHasKeyword = words.some(word => 
-          line.toLowerCase().includes(word.toLowerCase()) || line.includes(word)
-        );
-        
-        if (lineHasKeyword) {
-          // Get context (line before and after)
-          if (i > 0) relevantLines.push(lines[i - 1]);
-          relevantLines.push(line);
-          if (i < lines.length - 1) relevantLines.push(lines[i + 1]);
-        }
-      }
-      
-      if (relevantLines.length > 0) {
-        // Remove duplicates and format
-        const unique = [...new Set(relevantLines)].filter(l => l.trim());
-        return formatAnswer(unique, category);
-      }
+  // Check for different topics and return TTS-friendly responses
+  
+  // Salary questions
+  if (containsAny(queryArabic, ['راتب', 'رواتب', 'معاش', 'صرف', 'الراتب', 'salary', 'pay'])) {
+    if (allContent.includes('راتب') || allContent.includes('صرف')) {
+      return formatTTSResponse('salary', allContent);
+    }
+  }
+  
+  // Leave questions
+  if (containsAny(queryArabic, ['إجازة', 'إجازات', 'اجازة', 'عطلة', 'leave', 'vacation'])) {
+    if (allContent.includes('إجازة') || allContent.includes('اجازة')) {
+      return formatTTSResponse('leave', allContent);
+    }
+  }
+  
+  // Insurance questions
+  if (containsAny(queryArabic, ['تأمين', 'طبي', 'صحي', 'insurance', 'medical'])) {
+    if (allContent.includes('تأمين') || allContent.includes('طبي')) {
+      return formatTTSResponse('insurance', allContent);
+    }
+  }
+  
+  // Allowance questions
+  if (containsAny(queryArabic, ['بدل', 'بدلات', 'سكن', 'نقل', 'allowance'])) {
+    if (allContent.includes('بدل')) {
+      return formatTTSResponse('allowances', allContent);
+    }
+  }
+  
+  // Working hours questions
+  if (containsAny(queryArabic, ['ساعات', 'دوام', 'عمل', 'وقت', 'hours', 'work time'])) {
+    if (allContent.includes('ساعات') || allContent.includes('دوام')) {
+      return formatTTSResponse('hours', allContent);
+    }
+  }
+  
+  // Training questions
+  if (containsAny(queryArabic, ['تدريب', 'تطوير', 'دورات', 'training'])) {
+    if (allContent.includes('تدريب') || allContent.includes('تطوير')) {
+      return buildTTSResponse(
+        'بخصوص التدريب والتطوير،',
+        'الشركة توفر برامج تدريبية متنوعة لتطوير مهاراتك. هدفهم إنك تتطور وتنمو في مسيرتك المهنية.',
+        getRandomClosing()
+      );
+    }
+  }
+  
+  // Evaluation questions
+  if (containsAny(queryArabic, ['تقييم', 'أداء', 'evaluation', 'performance'])) {
+    if (allContent.includes('تقييم') || allContent.includes('أداء')) {
+      return buildTTSResponse(
+        'بالنسبة لتقييم الأداء،',
+        'يتم تقييمك سنوياً من مديرك المباشر. التقييم يشمل أداءك في العمل، وسلوكك المهني، وتطورك خلال السنة.',
+        getRandomClosing()
+      );
+    }
+  }
+  
+  // End of service questions
+  if (containsAny(queryArabic, ['نهاية الخدمة', 'مكافأة', 'استقالة', 'end of service'])) {
+    if (allContent.includes('نهاية الخدمة') || allContent.includes('مكافأة')) {
+      return buildTTSResponse(
+        'بخصوص مكافأة نهاية الخدمة،',
+        'حسب نظام العمل، تستحق نصف راتب عن كل سنة في الخمس سنوات الأولى. وبعدها راتب كامل عن كل سنة إضافية.',
+        getRandomClosing()
+      );
+    }
+  }
+  
+  // Attendance questions
+  if (containsAny(queryArabic, ['حضور', 'انصراف', 'تأخير', 'attendance'])) {
+    if (allContent.includes('حضور') || allContent.includes('تأخير')) {
+      return buildTTSResponse(
+        'بالنسبة للحضور والانصراف،',
+        'لازم تسجل حضورك إلكترونياً لما توصل. والتأخير المسموح فيه خمسة عشر دقيقة فقط. التأخير المتكرر ممكن يأثر على تقييمك السنوي.',
+        getRandomClosing()
+      );
     }
   }
 
@@ -292,24 +403,48 @@ export const searchInSources = (query, sources) => {
 };
 
 /**
- * Format the answer in natural Arabic
+ * Helper: Check if text contains any of the keywords
  */
-const formatAnswer = (lines, category) => {
-  const content = lines.join('\n').trim();
+const containsAny = (text, keywords) => {
+  const lowerText = text.toLowerCase();
+  return keywords.some(keyword => 
+    lowerText.includes(keyword.toLowerCase()) || text.includes(keyword)
+  );
+};
+
+/**
+ * Format TTS-optimized response based on topic
+ */
+const formatTTSResponse = (topic, content) => {
+  const template = TTS_TEMPLATES[topic];
+  if (!template) return null;
   
-  const intros = {
-    salary: 'بخصوص استفسارك عن الراتب، ',
-    leave: 'بالنسبة للإجازات، ',
-    insurance: 'فيما يتعلق بالتأمين، ',
-    allowance: 'بخصوص البدلات، ',
-    hours: 'بالنسبة لساعات العمل، ',
-    training: 'فيما يخص التدريب والتطوير، ',
-    evaluation: 'بخصوص تقييم الأداء، ',
-    attendance: 'بالنسبة للحضور والانصراف، ',
-    resignation: 'فيما يتعلق بنهاية الخدمة، '
-  };
+  const intro = template.intro;
+  const details = template.details.join(' ');
+  const closing = getRandomClosing();
   
-  const intro = intros[category] || '';
-  
-  return `${intro}بناءً على المصادر المتاحة:\n\n${content}\n\nهل لديك استفسار آخر؟`;
+  return buildTTSResponse(intro, details, closing);
+};
+
+/**
+ * Build a complete TTS-friendly response
+ */
+const buildTTSResponse = (intro, body, closing) => {
+  return `${intro} ${body} ${closing}`;
+};
+
+/**
+ * Get random closing phrase
+ */
+const getRandomClosing = () => {
+  const closings = TTS_TEMPLATES.closings;
+  return closings[Math.floor(Math.random() * closings.length)];
+};
+
+/**
+ * Get random opening phrase
+ */
+const getRandomOpening = () => {
+  const openings = TTS_TEMPLATES.openings;
+  return openings[Math.floor(Math.random() * openings.length)];
 };
