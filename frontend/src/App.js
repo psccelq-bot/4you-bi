@@ -155,108 +155,85 @@ function App() {
     }
   };
 
-  // Initialize Speech Synthesis
-  useEffect(() => {
-    if ('speechSynthesis' in window) {
-      speechSynthRef.current = window.speechSynthesis;
-      
-      // Load voices - they may not be available immediately
-      const loadVoices = () => {
-        const voices = speechSynthRef.current.getVoices();
-        console.log('Available voices:', voices.length);
-      };
-      
-      loadVoices();
-      
-      // Chrome requires this event to get voices
-      if (speechSynthRef.current.onvoiceschanged !== undefined) {
-        speechSynthRef.current.onvoiceschanged = loadVoices;
+  // Stop current audio playback
+  const stopCurrentAudio = useCallback(() => {
+    if (currentAudioSourceRef.current) {
+      try {
+        currentAudioSourceRef.current.stop();
+      } catch (e) {
+        // Already stopped
       }
+      currentAudioSourceRef.current = null;
     }
-    return () => {
-      // Cleanup: stop any playing speech
-      if (speechSynthRef.current) {
-        speechSynthRef.current.cancel();
-      }
-    };
-  }, []);
-
-  // Stop current speech
-  const stopSpeech = useCallback(() => {
-    if (speechSynthRef.current) {
-      speechSynthRef.current.cancel();
-    }
-    currentUtteranceRef.current = null;
     setCurrentPlayingId(null);
     setIsPreparingAudio(null);
   }, []);
 
-  // Handle text-to-speech (Real implementation)
-  const handleToggleSpeak = useCallback((msgId, text) => {
+  // Handle text-to-speech using Gemini TTS API
+  const handleToggleSpeak = useCallback(async (msgId, text) => {
     // If same message is playing, stop it
     if (currentPlayingId === msgId) {
-      stopSpeech();
+      stopCurrentAudio();
       return;
     }
 
-    // Stop any current speech
-    stopSpeech();
+    // Stop any current playback
+    stopCurrentAudio();
 
-    // Check if speech synthesis is available
-    if (!speechSynthRef.current) {
-      toast.error('متصفحك لا يدعم النطق الصوتي');
-      console.warn('Speech synthesis not supported in this browser');
-      return;
+    // Initialize AudioContext if needed (must be done after user interaction)
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ 
+        sampleRate: 24000 
+      });
+    }
+
+    // Resume AudioContext if suspended (browser policy)
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
     }
 
     setIsPreparingAudio(msgId);
 
-    // Create utterance
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-SA'; // Arabic - Saudi Arabia
-    utterance.rate = 0.9; // Slightly slower for clarity
-    utterance.pitch = 1;
-    utterance.volume = 1;
+    try {
+      // Call Gemini TTS API
+      const audioData = await generateSpeech(text);
 
-    // Get available Arabic voices
-    const voices = speechSynthRef.current.getVoices();
-    const arabicVoice = voices.find(voice => 
-      voice.lang.startsWith('ar') || voice.name.toLowerCase().includes('arabic')
-    );
-    
-    if (arabicVoice) {
-      utterance.voice = arabicVoice;
-    }
+      if (audioData) {
+        const ctx = audioContextRef.current;
+        
+        // Decode PCM data
+        const pcmBytes = decodePCM(audioData);
+        const audioBuffer = await decodeAudioData(pcmBytes, ctx, 24000, 1);
 
-    // Event handlers
-    utterance.onstart = () => {
+        // Stop preparing indicator
+        setIsPreparingAudio(null);
+        setCurrentPlayingId(msgId);
+
+        // Create and play audio source
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        
+        source.onended = () => {
+          setCurrentPlayingId(null);
+          currentAudioSourceRef.current = null;
+        };
+
+        currentAudioSourceRef.current = source;
+        source.start(0);
+        
+      } else {
+        throw new Error('No audio data received');
+      }
+    } catch (error) {
+      console.error('Gemini TTS Error:', error);
       setIsPreparingAudio(null);
-      setCurrentPlayingId(msgId);
-    };
-
-    utterance.onend = () => {
       setCurrentPlayingId(null);
-      currentUtteranceRef.current = null;
-    };
-
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event.error);
-      setCurrentPlayingId(null);
-      setIsPreparingAudio(null);
-      currentUtteranceRef.current = null;
       toast.error('عذراً، لم نتمكن من تشغيل الصوت', {
-        description: 'تأكد من أن متصفحك يدعم النطق الصوتي'
+        description: 'حدث خطأ أثناء توليد الصوت'
       });
-    };
-
-    // Store reference and speak
-    currentUtteranceRef.current = utterance;
-    
-    // Small delay to ensure voices are loaded
-    setTimeout(() => {
-      speechSynthRef.current.speak(utterance);
-    }, 100);
-  }, [currentPlayingId, stopSpeech]);
+    }
+  }, [currentPlayingId, stopCurrentAudio]);
 
   // File upload handler
   const handleFileUpload = (event, category) => {
