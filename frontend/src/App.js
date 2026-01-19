@@ -111,15 +111,24 @@ function App() {
 
     setIsTyping(true);
 
-    // Get relevant sources based on view
+    // Get relevant sources - use all available sources for the current view
     let relevantSources = [];
     if (activeView === SourceCategory.ADVISOR) {
-      relevantSources = sources.filter(s => s.selected && s.category === SourceCategory.ADVISOR);
+      // Use all selected advisor sources OR all sources if none specifically for advisor
+      const advisorSources = sources.filter(s => s.selected && s.category === SourceCategory.ADVISOR);
+      relevantSources = advisorSources.length > 0 ? advisorSources : sources.filter(s => s.selected);
     } else if (selectedRepoSource) {
       relevantSources = [selectedRepoSource];
     } else {
       relevantSources = sources.filter(s => s.selected && s.category === SourceCategory.REPOSITORY);
     }
+
+    // If no sources found, use all available selected sources
+    if (relevantSources.length === 0) {
+      relevantSources = sources.filter(s => s.selected);
+    }
+
+    console.log('Using sources:', relevantSources.map(s => s.name));
 
     try {
       // Generate AI response from sources
