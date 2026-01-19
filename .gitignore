@@ -81,3 +81,7 @@ android-sdk/
 
 # Note: .env files are NOT ignored - they are needed for deployment
 # Backend and frontend .env files contain required configuration
+-e 
+# Environment files
+*.env
+*.env.*
