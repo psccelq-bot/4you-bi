@@ -38,8 +38,9 @@ const getInitialRepositoryMessages = () => [
 ];
 
 function App() {
-  // State Management - Sources in memory (not localStorage due to size limits)
+  // State Management - Sources in IndexedDB for persistence
   const [sources, setSources] = useState([]);
+  const [sourcesLoaded, setSourcesLoaded] = useState(false);
   const [advisorMessages, setAdvisorMessages] = useLocalStorage(
     '4you_advisor_messages',
     getInitialAdvisorMessages()
@@ -71,6 +72,33 @@ function App() {
   const repositoryFileInputRef = useRef(null);
   const audioContextRef = useRef(null);
   const currentAudioSourceRef = useRef(null);
+
+  // Load sources from IndexedDB on mount
+  useEffect(() => {
+    const loadSources = async () => {
+      try {
+        const savedSources = await getSourcesFromDB();
+        if (savedSources && savedSources.length > 0) {
+          setSources(savedSources);
+          console.log(`Loaded ${savedSources.length} sources from IndexedDB`);
+        }
+      } catch (error) {
+        console.error('Error loading sources from IndexedDB:', error);
+      } finally {
+        setSourcesLoaded(true);
+      }
+    };
+    loadSources();
+  }, []);
+
+  // Save sources to IndexedDB whenever they change
+  useEffect(() => {
+    if (sourcesLoaded && sources.length >= 0) {
+      saveSourcesToDB(sources).catch(error => {
+        console.error('Error saving sources to IndexedDB:', error);
+      });
+    }
+  }, [sources, sourcesLoaded]);
 
   // Scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
