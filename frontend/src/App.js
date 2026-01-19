@@ -16,6 +16,7 @@ import {
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
 import { generateAIResponse, processFileForAI } from '@/services/geminiAI';
+import { getSourcesFromDB, saveSourcesToDB, clearAllSources } from '@/services/indexedDB';
 
 // Initial welcome messages - Warm, positive and human-like
 const getInitialAdvisorMessages = () => [
