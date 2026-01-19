@@ -53,8 +53,12 @@ function App() {
   const chatEndRef = useRef(null);
   const advisorFileInputRef = useRef(null);
   const repositoryFileInputRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const currentAudioSourceRef = useRef(null);
+  const currentUtteranceRef = useRef(null);
+  
+  // Preload voices on mount
+  useEffect(() => {
+    preloadVoices();
+  }, []);
 
   // Scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
