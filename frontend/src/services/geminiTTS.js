@@ -1,77 +1,61 @@
 // Gemini TTS Service - High Quality Female Arabic Voice
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Uses REST API directly for better compatibility
 
-// Initialize Google AI with API key
 const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-
-let genAI = null;
-let ttsModel = null;
-
-/**
- * Initialize the Gemini AI client
- */
-function getClient() {
-  if (!genAI && API_KEY) {
-    genAI = new GoogleGenerativeAI(API_KEY);
-  }
-  return genAI;
-}
-
-/**
- * Get the TTS model
- */
-function getTTSModel() {
-  if (!ttsModel) {
-    const client = getClient();
-    if (client) {
-      ttsModel = client.getGenerativeModel({ 
-        model: 'gemini-2.5-flash-preview-tts' 
-      });
-    }
-  }
-  return ttsModel;
-}
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /**
  * Generate speech audio from Arabic text using Gemini TTS
- * Uses a warm female voice (Aoede) optimized for Arabic
+ * Uses Kore voice (female, clear and professional)
  * 
  * @param {string} text - The Arabic text to convert to speech
  * @returns {Promise<string|null>} - Base64 encoded audio data or null on error
  */
 export async function generateSpeech(text) {
   try {
-    const model = getTTSModel();
-    
-    if (!model) {
-      console.error('Gemini TTS model not initialized. Check API key.');
+    if (!API_KEY) {
+      console.error('Missing REACT_APP_GOOGLE_API_KEY');
       return null;
     }
 
-    // Generate speech with female voice
-    const result = await model.generateContent({
-      contents: [{ 
-        role: 'user', 
-        parts: [{ text: text }] 
-      }],
-      generationConfig: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: 'Kore' // Female voice - clear and professional
+    const response = await fetch(
+      `${API_BASE}/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: text }]
+          }],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: 'Kore' // Female voice - clear and professional
+                }
+              }
             }
           }
-        }
+        })
       }
-    });
+    );
 
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Gemini TTS API Error:', error);
+      return null;
+    }
+
+    const result = await response.json();
+    
     // Extract audio data from response
-    const response = result.response;
-    const audioData = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     
     if (!audioData) {
-      console.error('No audio data in response');
+      console.error('No audio data in response:', result);
       return null;
     }
 
@@ -84,7 +68,7 @@ export async function generateSpeech(text) {
 }
 
 /**
- * Decode Base64 PCM audio data to ArrayBuffer
+ * Decode Base64 PCM audio data to Uint8Array
  * @param {string} base64Data - Base64 encoded PCM data
  * @returns {Uint8Array} - Raw PCM bytes
  */
