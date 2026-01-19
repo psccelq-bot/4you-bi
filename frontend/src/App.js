@@ -1,52 +1,386 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Toaster } from '@/components/ui/sonner';
+import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
+import ChatMessage, { TypingIndicator } from '@/components/chat/ChatMessage';
+import ChatInput from '@/components/chat/ChatInput';
+import RepositoryGrid from '@/components/chat/RepositoryGrid';
+import AdminModal from '@/components/modals/AdminModal';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  SourceCategory,
+  SourceType,
+  SourceTheme,
+  initialSources,
+  getInitialAdvisorMessages,
+  getInitialRepositoryMessages,
+  mockAdvisorResponses,
+  mockRepositoryResponses,
+  generateId
+} from '@/data/mockData';
+import useLocalStorage from '@/hooks/useLocalStorage';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function App() {
+  // State Management
+  const [sources, setSources] = useLocalStorage('4you_sources', initialSources);
+  const [advisorMessages, setAdvisorMessages] = useLocalStorage(
+    '4you_advisor_messages',
+    getInitialAdvisorMessages()
+  );
+  const [repositoryMessages, setRepositoryMessages] = useLocalStorage(
+    '4you_repository_messages',
+    getInitialRepositoryMessages()
+  );
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+  const [activeView, setActiveView] = useState(SourceCategory.ADVISOR);
+  const [activeAdminTab, setActiveAdminTab] = useState(SourceCategory.ADVISOR);
+  const [selectedRepoSource, setSelectedRepoSource] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAutoSpeak, setIsAutoSpeak] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [currentPlayingId, setCurrentPlayingId] = useState(null);
+  const [isPreparingAudio, setIsPreparingAudio] = useState(null);
+
+  // Admin Inputs
+  const [advLinkInput, setAdvLinkInput] = useState('');
+  const [repoLinkInput, setRepoLinkInput] = useState('');
+
+  // Refs
+  const chatEndRef = useRef(null);
+  const advisorFileInputRef = useRef(null);
+  const repositoryFileInputRef = useRef(null);
+
+  // Scroll to bottom when messages change
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [advisorMessages, repositoryMessages, isTyping, scrollToBottom]);
+
+  // Helper to generate mock response
+  const generateMockResponse = (userText, isAdvisor) => {
+    const lowerText = userText.toLowerCase();
+    const responses = isAdvisor ? mockAdvisorResponses : mockRepositoryResponses;
+
+    if (isAdvisor) {
+      if (lowerText.includes('راتب') || lowerText.includes('معاش')) {
+        return responses.salary;
+      }
+      if (lowerText.includes('مزايا') || lowerText.includes('فوائد') || lowerText.includes('تأمين')) {
+        return responses.benefits;
+      }
+      if (lowerText.includes('انتقال') || lowerText.includes('نقل')) {
+        return responses.transfer;
+      }
+      if (lowerText.includes('تدريب') || lowerText.includes('تأهيل')) {
+        return responses.training;
+      }
+      if (lowerText.includes('أهلا') || lowerText.includes('مرحبا') || lowerText.includes('اسمي')) {
+        return responses.greeting;
+      }
+    } else {
+      if (lowerText.includes('ملخص') || lowerText.includes('تلخيص')) {
+        return responses.summary;
+      }
+      if (lowerText.includes('بحث') || lowerText.includes('ابحث')) {
+        return responses.search;
+      }
+      if (lowerText.includes('استخرج') || lowerText.includes('استخراج')) {
+        return responses.extract;
+      }
+    }
+
+    return responses.default;
+  };
+
+  // Handle sending message
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isTyping) return;
+
+    const userText = inputText.trim();
+    setInputText('');
+
+    // Create user message
+    const userMessage = {
+      id: generateId(),
+      role: 'user',
+      text: userText,
+      timestamp: new Date()
+    };
+
+    // Add user message
+    if (activeView === SourceCategory.ADVISOR) {
+      setAdvisorMessages((prev) => [...prev, userMessage]);
+    } else {
+      setRepositoryMessages((prev) => [...prev, userMessage]);
+    }
+
+    setIsTyping(true);
+
+    // Simulate AI response delay
+    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1500));
+
+    // Generate response
+    const responseText = generateMockResponse(userText, activeView === SourceCategory.ADVISOR);
+
+    const assistantMessage = {
+      id: generateId(),
+      role: 'assistant',
+      text: responseText,
+      timestamp: new Date()
+    };
+
+    // Add assistant message
+    if (activeView === SourceCategory.ADVISOR) {
+      setAdvisorMessages((prev) => [...prev, assistantMessage]);
+    } else {
+      setRepositoryMessages((prev) => [...prev, assistantMessage]);
+    }
+
+    setIsTyping(false);
+
+    // Auto-speak if enabled
+    if (isAutoSpeak) {
+      handleToggleSpeak(assistantMessage.id, responseText);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  // Handle text-to-speech (mock)
+  const handleToggleSpeak = (msgId, text) => {
+    if (currentPlayingId === msgId) {
+      setCurrentPlayingId(null);
+      return;
+    }
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    setIsPreparingAudio(msgId);
+
+    // Mock audio preparation
+    setTimeout(() => {
+      setIsPreparingAudio(null);
+      setCurrentPlayingId(msgId);
+
+      // Mock audio duration based on text length
+      const duration = Math.min(text.length * 50, 5000);
+      setTimeout(() => {
+        setCurrentPlayingId(null);
+      }, duration);
+    }, 500);
+  };
+
+  // File upload handler
+  const handleFileUpload = (event, category) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isPdf = file.type === 'application/pdf';
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+    let type = SourceType.TEXT;
+    if (isPdf) type = SourceType.PDF;
+    else if (isExcel) type = SourceType.EXCEL;
+
+    const newSource = {
+      id: generateId(),
+      name: file.name.replace(/\.[^/.]+$/, ''),
+      type: type,
+      category: category,
+      content: `محتوى ${file.name}`,
+      mimeType: file.type,
+      selected: true,
+      theme: SourceTheme.CYAN,
+      createdAt: new Date().toISOString()
+    };
+
+    setSources((prev) => [...prev, newSource]);
+    event.target.value = '';
+  };
+
+  // Add external link
+  const handleAddLink = (category) => {
+    const input = category === SourceCategory.ADVISOR ? advLinkInput : repoLinkInput;
+    if (!input.trim()) return;
+
+    const newSource = {
+      id: generateId(),
+      name: 'رابط خارجي',
+      type: SourceType.LINK,
+      category: category,
+      content: input,
+      mimeType: 'text/url',
+      selected: true,
+      theme: SourceTheme.CYAN,
+      createdAt: new Date().toISOString()
+    };
+
+    setSources((prev) => [...prev, newSource]);
+    category === SourceCategory.ADVISOR ? setAdvLinkInput('') : setRepoLinkInput('');
+  };
+
+  // Add manual text
+  const handleAddManualText = (category) => {
+    const newSource = {
+      id: generateId(),
+      name: `نص مضاف (${new Date().toLocaleTimeString('ar-SA')})`,
+      type: SourceType.TEXT,
+      category: category,
+      content: 'نص مضاف يدوياً',
+      mimeType: 'text/plain',
+      selected: true,
+      theme: SourceTheme.CYAN,
+      createdAt: new Date().toISOString()
+    };
+
+    setSources((prev) => [...prev, newSource]);
+  };
+
+  // Remove source
+  const handleRemoveSource = (id) => {
+    setSources((prev) => prev.filter((s) => s.id !== id));
+    if (selectedRepoSource?.id === id) {
+      setSelectedRepoSource(null);
+    }
+  };
+
+  // Clear all data
+  const handleClearAllData = () => {
+    if (window.confirm('هل أنت متأكد من مسح كافة سجلات المنصة؟')) {
+      setSources(initialSources);
+      setAdvisorMessages(getInitialAdvisorMessages());
+      setRepositoryMessages(getInitialRepositoryMessages());
+      setSelectedRepoSource(null);
+    }
+  };
+
+  // Select source for chat
+  const handleSelectSource = (source) => {
+    setSelectedRepoSource(source);
+
+    const welcomeMsg = {
+      id: generateId(),
+      role: 'assistant',
+      text: `يا أهلاً بك، تم تفعيل المصدر: "${source.name}".. كيف يمكن لمستشارك المعرفي خدمتك في تحليل محتوى هذا الملف؟\nممكن نتشرف باسمك؟`,
+      timestamp: new Date()
+    };
+
+    setRepositoryMessages((prev) => [...prev, welcomeMsg]);
+  };
+
+  // Admin login
+  const handleAdminLogin = () => {
+    setIsAdmin(true);
+    setShowAdminModal(false);
+  };
+
+  // Get messages for current view
+  const currentMessages =
+    activeView === SourceCategory.ADVISOR ? advisorMessages : repositoryMessages;
+
+  // Get repository sources
+  const repositorySources = sources.filter(
+    (s) => s.category === SourceCategory.REPOSITORY
   );
-};
 
-function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="flex h-screen overflow-hidden font-cairo text-foreground bg-background" dir="rtl">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        setSelectedRepoSource={setSelectedRepoSource}
+        isAdmin={isAdmin}
+        setIsAdmin={setIsAdmin}
+        setShowAdminModal={setShowAdminModal}
+        sources={sources}
+        activeAdminTab={activeAdminTab}
+        setActiveAdminTab={setActiveAdminTab}
+        advLinkInput={advLinkInput}
+        setAdvLinkInput={setAdvLinkInput}
+        repoLinkInput={repoLinkInput}
+        setRepoLinkInput={setRepoLinkInput}
+        onFileUpload={handleFileUpload}
+        onAddLink={handleAddLink}
+        onAddManualText={handleAddManualText}
+        onRemoveSource={handleRemoveSource}
+        onClearAllData={handleClearAllData}
+        fileInputRef={
+          activeAdminTab === SourceCategory.ADVISOR
+            ? advisorFileInputRef
+            : repositoryFileInputRef
+        }
+      />
+
+      {/* Main Content */}
+      <main
+        className="flex-1 flex flex-col relative"
+        onClick={() => isSidebarOpen && setIsSidebarOpen(false)}
+      >
+        {/* Header */}
+        <Header
+          activeView={activeView}
+          selectedRepoSource={selectedRepoSource}
+          setSelectedRepoSource={setSelectedRepoSource}
+          isAutoSpeak={isAutoSpeak}
+          setIsAutoSpeak={setIsAutoSpeak}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
+
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
+          <div className="max-w-4xl mx-auto h-full">
+            {activeView === SourceCategory.REPOSITORY && !selectedRepoSource ? (
+              <RepositoryGrid
+                sources={repositorySources}
+                onSelectSource={handleSelectSource}
+              />
+            ) : (
+              <div className="space-y-10 pb-12">
+                {currentMessages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    isAdvisorView={activeView === SourceCategory.ADVISOR}
+                    currentPlayingId={currentPlayingId}
+                    isPreparingAudio={isPreparingAudio}
+                    onToggleSpeak={handleToggleSpeak}
+                  />
+                ))}
+                {isTyping && <TypingIndicator />}
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+
+        {/* Chat Input */}
+        <ChatInput
+          inputText={inputText}
+          setInputText={setInputText}
+          onSendMessage={handleSendMessage}
+          isTyping={isTyping}
+          activeView={activeView}
+          selectedRepoSource={selectedRepoSource}
+          disabled={activeView === SourceCategory.REPOSITORY && !selectedRepoSource}
+        />
+      </main>
+
+      {/* Admin Modal */}
+      <AdminModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        onLogin={handleAdminLogin}
+      />
+
+      {/* Toast Notifications */}
+      <Toaster position="top-center" richColors />
     </div>
   );
 }
