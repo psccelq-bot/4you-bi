@@ -1,12 +1,10 @@
 // Gemini TTS Service - High Quality Female Arabic Voice
-// Uses REST API directly for better compatibility
+// Uses Backend API for TTS generation
 
-// API Key from environment
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 /**
- * Generate speech audio from Arabic text using Gemini TTS
+ * Generate speech audio from Arabic text using Backend TTS API
  * Uses Kore voice (female, clear and professional)
  * 
  * @param {string} text - The Arabic text to convert to speech
@@ -14,54 +12,35 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
  */
 export async function generateSpeech(text) {
   try {
-    if (!API_KEY) {
-      console.error('Missing REACT_APP_GOOGLE_API_KEY');
-      return null;
-    }
-
-    const response = await fetch(
-      `${API_BASE}/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contents: [{
-            role: 'user',
-            parts: [{ text: text }]
-          }],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: 'Kore' // Female voice - clear and professional
-                }
-              }
-            }
-          }
-        })
-      }
-    );
+    console.log('Calling TTS API...');
+    
+    const response = await fetch(`${API_BASE}/api/tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text })
+    });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('Gemini TTS API Error:', error);
+      console.error('TTS API Error:', response.status);
       return null;
     }
 
     const result = await response.json();
     
-    // Extract audio data from response
-    const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    
-    if (!audioData) {
-      console.error('No audio data in response:', result);
+    if (result.error) {
+      console.error('TTS Error:', result.error);
       return null;
     }
 
-    return audioData;
+    if (!result.audio) {
+      console.error('No audio data in response');
+      return null;
+    }
+
+    console.log('TTS audio received successfully');
+    return result.audio;
     
   } catch (error) {
     console.error('Gemini TTS Error:', error);
