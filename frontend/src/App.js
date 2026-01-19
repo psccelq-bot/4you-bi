@@ -14,9 +14,10 @@ import {
   initialSources,
   getInitialAdvisorMessages,
   getInitialRepositoryMessages,
-  mockAdvisorResponses,
-  mockRepositoryResponses,
-  generateId
+  generateId,
+  searchInSources,
+  OUT_OF_SCOPE_RESPONSE,
+  NO_SOURCES_RESPONSE
 } from '@/data/mockData';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
