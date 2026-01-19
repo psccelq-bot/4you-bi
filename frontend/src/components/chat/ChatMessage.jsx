@@ -78,7 +78,7 @@ export const TypingIndicator = () => (
   <div className="flex items-center gap-3 px-12 animate-pulse">
     <LogoIcon className="w-5 h-5 text-primary animate-spin" />
     <span className="text-sm font-black text-foreground/40 italic">
-      alhootah يكتب...
+      4you يكتب...
     </span>
   </div>
 );
