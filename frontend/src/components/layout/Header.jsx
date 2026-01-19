@@ -31,7 +31,7 @@ const Header = ({
                 : 'المكتبة الرقمية'}
           </h2>
           <p className="text-[8px] md:text-[10px] font-bold text-primary uppercase opacity-80 tracking-widest">
-            alhootah Advisor
+            4you Assistant
           </p>
         </div>
       </div>
