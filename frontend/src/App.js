@@ -258,31 +258,47 @@ function App() {
     }
   }, [currentPlayingId, stopCurrentAudio]);
 
-  // File upload handler
-  const handleFileUpload = (event, category) => {
+  // File upload handler - processes files for native Gemini vision
+  const handleFileUpload = async (event, category) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const isPdf = file.type === 'application/pdf';
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv');
+    const isImage = file.type.startsWith('image/');
 
     let type = SourceType.TEXT;
     if (isPdf) type = SourceType.PDF;
     else if (isExcel) type = SourceType.EXCEL;
 
-    const newSource = {
-      id: generateId(),
-      name: file.name.replace(/\.[^/.]+$/, ''),
-      type: type,
-      category: category,
-      content: `محتوى ${file.name}`,
-      mimeType: file.type,
-      selected: true,
-      theme: SourceTheme.CYAN,
-      createdAt: new Date().toISOString()
-    };
+    // Show loading toast
+    toast.loading('جاري رفع الملف...', { id: 'upload' });
 
-    setSources((prev) => [...prev, newSource]);
+    try {
+      // Process file for AI (get base64 data)
+      const { fileData, mimeType } = await processFileForAI(file);
+
+      const newSource = {
+        id: generateId(),
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        type: type,
+        category: category,
+        content: '', // Will use fileData instead
+        fileData: fileData, // Base64 encoded file for Gemini vision
+        mimeType: mimeType,
+        selected: true,
+        theme: SourceTheme.CYAN,
+        createdAt: new Date().toISOString()
+      };
+
+      setSources((prev) => [...prev, newSource]);
+      toast.success(`تم رفع "${file.name}" بنجاح`, { id: 'upload' });
+      
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast.error('حدث خطأ أثناء رفع الملف', { id: 'upload' });
+    }
+
     event.target.value = '';
   };
 
