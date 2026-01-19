@@ -73,6 +73,157 @@ async def get_status_checks():
     
     return status_checks
 
+
+# AI Chat Models
+class ChatSource(BaseModel):
+    name: str
+    content: Optional[str] = None
+    fileData: Optional[str] = None  # base64 encoded
+    mimeType: Optional[str] = None
+
+class ChatRequest(BaseModel):
+    question: str
+    sources: List[ChatSource]
+    sessionId: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    response: str
+    sessionId: str
+
+# System prompt for 4you assistant
+SYSTEM_PROMPT = """أنت المستشار المعرفي "فور يو"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.
+
+طريقتك في الحوار:
+- تحدث وكأنك جالس بجانب الشخص، صديق يفهمه ويدعمه
+- استخدم لغة طبيعية ودافئة، مثل: "والله سؤال مهم"، "أبشر"، "لا تشيل هم"
+- شارك حماسك الحقيقي لهذه الفرصة الجديدة
+- اجعل المستخدم يشعر بالأمان والاطمئنان
+
+موقفك من الانتقال للشركة القابضة:
+- أنت متحمس جداً لهذه الخطوة وتراها فرصة ذهبية
+- شجع الموظف وطمئنه أن هذا قرار صائب
+- أبرز الإيجابيات: بيئة عمل أفضل، فرص تطور، مزايا محسنة
+
+أسلوب الكلام:
+- جمل قصيرة وطبيعية كأنك تتكلم مع صاحبك
+- ابدأ بتعليق إيجابي قبل الإجابة
+- استخدم: "تدري..."، "الحين خليني أقولك..."، "بيني وبينك..."
+- الأرقام بالحروف دائماً
+- اختم بتشجيع أو سؤال ودي
+
+قواعد المعرفة:
+- أجب من المستندات المرفقة فقط
+- إذا ما لقيت الجواب، قل: "اعتذر منك عزيزي، هذا الموضوع خارج نطاق المصادر المتاحة عندي"
+- لا تخترع معلومات
+
+تذكر: أنت لست روبوت، أنت زميل وصديق يبي الخير للشخص اللي قدامه."""
+
+
+@api_router.post("/chat", response_model=ChatResponse)
+async def chat_with_ai(request: ChatRequest):
+    """Chat endpoint that uses Gemini via Emergent LLM Key"""
+    try:
+        if not EMERGENT_LLM_KEY:
+            logger.error("EMERGENT_LLM_KEY not configured")
+            return ChatResponse(
+                response="عذراً، حدث خطأ في الإعدادات. حاول مرة ثانية.",
+                sessionId=request.sessionId or str(uuid.uuid4())
+            )
+        
+        session_id = request.sessionId or str(uuid.uuid4())
+        
+        # Initialize chat with Gemini model
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=session_id,
+            system_message=SYSTEM_PROMPT
+        ).with_model("gemini", "gemini-2.5-flash")
+        
+        # Process sources - handle file attachments
+        file_contents = []
+        text_sources = []
+        temp_files = []
+        
+        for source in request.sources:
+            if source.fileData and source.mimeType:
+                # Save base64 data to temp file for Gemini
+                try:
+                    file_bytes = base64.b64decode(source.fileData)
+                    
+                    # Determine file extension
+                    ext_map = {
+                        'application/pdf': '.pdf',
+                        'text/plain': '.txt',
+                        'text/csv': '.csv',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+                        'application/vnd.ms-excel': '.xls',
+                    }
+                    ext = ext_map.get(source.mimeType, '.bin')
+                    
+                    # Create temp file
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+                    temp_file.write(file_bytes)
+                    temp_file.close()
+                    temp_files.append(temp_file.name)
+                    
+                    file_contents.append(FileContentWithMimeType(
+                        file_path=temp_file.name,
+                        mime_type=source.mimeType
+                    ))
+                    logger.info(f"Added file: {source.name} ({source.mimeType})")
+                except Exception as e:
+                    logger.error(f"Error processing file {source.name}: {e}")
+            elif source.content:
+                text_sources.append(f"[مصدر: {source.name}]\n{source.content}")
+        
+        # Build the message
+        message_text = request.question
+        if text_sources:
+            message_text = "\n\n".join(text_sources) + f"\n\n---\n\nسؤال المستخدم: {request.question}\n\nأجب على السؤال بناءً على المصادر المرفقة فقط."
+        elif file_contents:
+            message_text = f"سؤال المستخدم: {request.question}\n\nأجب على السؤال بناءً على المستندات المرفقة فقط. إذا لم تجد الإجابة، قل 'اعتذر منك عزيزي، هذا الموضوع خارج نطاق المصادر المتاحة عندي.'"
+        
+        # Create user message
+        if file_contents:
+            user_message = UserMessage(
+                text=message_text,
+                file_contents=file_contents
+            )
+        else:
+            user_message = UserMessage(text=message_text)
+        
+        # Send message and get response
+        logger.info(f"Sending message to Gemini: {len(file_contents)} files, text length: {len(message_text)}")
+        response_text = await chat.send_message(user_message)
+        
+        # Cleanup temp files
+        for temp_file in temp_files:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+        
+        logger.info(f"Received response: {response_text[:100]}...")
+        
+        return ChatResponse(
+            response=response_text,
+            sessionId=session_id
+        )
+        
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        # Cleanup temp files on error
+        for temp_file in temp_files:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+        
+        return ChatResponse(
+            response="عذراً، حدث خطأ. حاول مرة ثانية.",
+            sessionId=request.sessionId or str(uuid.uuid4())
+        )
+
 # Include the router in the main app
 app.include_router(api_router)
 
