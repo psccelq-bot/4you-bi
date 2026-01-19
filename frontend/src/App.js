@@ -19,6 +19,7 @@ import {
   generateId
 } from '@/data/mockData';
 import useLocalStorage from '@/hooks/useLocalStorage';
+import { generateSpeech, decodePCM, decodeAudioData } from '@/services/geminiService';
 
 function App() {
   // State Management
