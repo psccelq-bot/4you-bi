@@ -82,22 +82,31 @@ function App() {
           setSources(savedSources);
           console.log(`Loaded ${savedSources.length} sources from IndexedDB`);
         }
+        setSourcesLoaded(true);
       } catch (error) {
         console.error('Error loading sources from IndexedDB:', error);
-      } finally {
         setSourcesLoaded(true);
       }
     };
     loadSources();
   }, []);
 
-  // Save sources to IndexedDB whenever they change
+  // Save sources to IndexedDB whenever they change (only after initial load)
+  const sourcesRef = useRef(sources);
   useEffect(() => {
-    if (sourcesLoaded && sources.length >= 0) {
-      saveSourcesToDB(sources).catch(error => {
-        console.error('Error saving sources to IndexedDB:', error);
-      });
-    }
+    // Skip if not loaded yet or if sources haven't actually changed
+    if (!sourcesLoaded) return;
+    
+    // Only save if sources actually changed (not just initial empty state)
+    const prevSources = sourcesRef.current;
+    if (JSON.stringify(prevSources) === JSON.stringify(sources)) return;
+    
+    sourcesRef.current = sources;
+    
+    // Save to IndexedDB
+    saveSourcesToDB(sources).catch(error => {
+      console.error('Error saving sources to IndexedDB:', error);
+    });
   }, [sources, sourcesLoaded]);
 
   // Scroll to bottom when messages change
