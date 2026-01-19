@@ -17,12 +17,12 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
 import { generateAIResponse, processFileForAI } from '@/services/geminiAI';
 
-// Initial welcome messages
+// Initial welcome messages - Warm, positive and human-like
 const getInitialAdvisorMessages = () => [
   {
     id: 'w-adv',
     role: 'assistant',
-    text: 'أهلاً وسهلاً فيك. أنا فور يو، مساعدك المعرفي. ارفع المستندات اللي تبي تستفسر عنها، وأنا جاهز أساعدك.',
+    text: 'يا أهلاً وسهلاً بك.. معك المستشار المعرفي فور يو، يسعدني جداً مرافقتك في رحلة الانتقال الإيجابي من وزارة الصحة إلى الشركة القابضة. هذه مرحلة جديدة ومثيرة، وأنا هنا لأساعدك في كل استفساراتك. تفضل، كيف يمكنني خدمتك اليوم؟ وممكن نتشرف باسمك الكريم؟',
     timestamp: new Date()
   }
 ];
@@ -31,7 +31,7 @@ const getInitialRepositoryMessages = () => [
   {
     id: 'w-repo',
     role: 'assistant',
-    text: 'أهلاً فيك في المكتبة الرقمية. اختر المستند اللي تبي تستفسر عنه.',
+    text: 'يا هلا فيك في مكتبتك الرقمية.. المستشار المعرفي فور يو جاهز لمساعدتك في تحليل واستخراج المعلومات من الوثائق. اختر المصدر اللي يهمك، وخليني أساعدك في فهم محتواه. ممكن نتشرف باسمك؟',
     timestamp: new Date()
   }
 ];
