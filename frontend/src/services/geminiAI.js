@@ -1,7 +1,7 @@
 // Gemini AI Service with Native PDF Vision Support
 // Uses Gemini's native document understanding capabilities
 
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyDP86IJ8ibRiJl09OT0UTd1QAFsUASzeWw';
+const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 // System prompt for 4you assistant - Human-like, positive, encouraging
@@ -47,23 +47,23 @@ const SYSTEM_PROMPT = `أنت المستشار المعرفي "فور يو"، ص
 export async function generateAIResponse(question, sources, chatHistory = []) {
   try {
     if (!API_KEY) {
-      console.error('Missing Google API Key');
-      return 'عذراً، حدث خطأ في الاتصال. حاول مرة ثانية.';
+      console.error('Missing Google API Key - check REACT_APP_GOOGLE_API_KEY in .env');
+      return 'عذراً، حدث خطأ في الاتصال. مفتاح API غير موجود.';
     }
 
-    // Build parts array with documents
+    // Build parts array with documents - documents FIRST, then text prompt
     const parts = [];
     
-    // Add documents/sources
+    // Add documents/sources FIRST (important for Gemini multimodal)
     for (const source of sources) {
       if (!source.selected) continue;
       
       // Check if source has binary file data (PDF, Excel, etc.)
       if (source.fileData && source.mimeType) {
-        // Add as inline_data for native document processing
+        // Add as inlineData for native document processing (camelCase!)
         parts.push({
-          inline_data: {
-            mime_type: source.mimeType,
+          inlineData: {
+            mimeType: source.mimeType,
             data: source.fileData // base64 encoded
           }
         });
@@ -81,21 +81,14 @@ export async function generateAIResponse(question, sources, chatHistory = []) {
       return 'ما عندي مصادر متاحة حالياً. لو تكرمت ارفع المصادر أول.';
     }
 
-    // Add the question with system instructions
+    // Add the question with system instructions AFTER the documents
     parts.push({
       text: `${SYSTEM_PROMPT}\n\n---\n\nسؤال المستخدم: ${question}\n\nأجب على السؤال بناءً على المستندات المرفقة فقط. إذا لم تجد الإجابة، قل "اعتذر منك عزيزي، هذا الموضوع خارج نطاق المصادر المتاحة عندي."`
     });
 
-    // Build conversation history
-    const historyContents = chatHistory.slice(-4).map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.text }]
-    }));
-
-    // Build request body
+    // Build request body - simplified structure for multimodal
     const requestBody = {
       contents: [
-        ...historyContents,
         {
           role: 'user',
           parts: parts
@@ -115,9 +108,11 @@ export async function generateAIResponse(question, sources, chatHistory = []) {
       ]
     };
 
+    console.log('Sending request to Gemini with', parts.length, 'parts');
+
     // Call Gemini API with document vision support
     const response = await fetch(
-      `${API_BASE}/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+      `${API_BASE}/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -135,11 +130,17 @@ export async function generateAIResponse(question, sources, chatHistory = []) {
       if (error.error?.code === 429) {
         return 'النظام مشغول حالياً. حاول مرة ثانية بعد قليل.';
       }
+      if (error.error?.code === 400) {
+        console.error('Bad request - check payload structure:', error.error?.message);
+        return 'عذراً، حدث خطأ في معالجة الملف. حاول مرة ثانية.';
+      }
       
       return 'عذراً، حدث خطأ. حاول مرة ثانية.';
     }
 
     const result = await response.json();
+    console.log('Gemini response received:', result?.candidates?.[0]?.finishReason);
+    
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
