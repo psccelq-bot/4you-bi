@@ -1,7 +1,7 @@
 // Gemini TTS Service - High Quality Female Arabic Voice
 // Uses Backend API for TTS generation
 
-const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
+const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
 /**
  * Generate speech audio from Arabic text using Backend TTS API
