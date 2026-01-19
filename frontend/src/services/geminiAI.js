@@ -1,7 +1,7 @@
 // Gemini AI Service - Using Backend API with Emergent LLM Key
 // Sends requests to backend which uses emergentintegrations library
 
-const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
+const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
 // System prompt for 4you assistant - kept for reference
 const SYSTEM_PROMPT = `أنت المستشار المعرفي "فور يو"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.`;
