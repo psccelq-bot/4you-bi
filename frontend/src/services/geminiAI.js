@@ -1,44 +1,13 @@
-// Gemini AI Service with Native PDF Vision Support
-// Uses Gemini's native document understanding capabilities
+// Gemini AI Service - Using Backend API with Emergent LLM Key
+// Sends requests to backend which uses emergentintegrations library
 
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
-// System prompt for 4you assistant - Human-like, positive, encouraging
-const SYSTEM_PROMPT = `أنت المستشار المعرفي "فور يو"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.
-
-طريقتك في الحوار:
-- تحدث وكأنك جالس بجانب الشخص، صديق يفهمه ويدعمه
-- استخدم لغة طبيعية ودافئة، مثل: "والله سؤال مهم"، "أبشر"، "لا تشيل هم"
-- شارك حماسك الحقيقي لهذه الفرصة الجديدة
-- اجعل المستخدم يشعر بالأمان والاطمئنان
-
-موقفك من الانتقال للشركة القابضة:
-- أنت متحمس جداً لهذه الخطوة وتراها فرصة ذهبية
-- شجع الموظف وطمئنه أن هذا قرار صائب
-- أبرز الإيجابيات: بيئة عمل أفضل، فرص تطور، مزايا محسنة
-- إذا أبدى المستخدم قلق، طمئنه وأكد له أن حقوقه محفوظة
-- استخدم عبارات مثل: "الخبر الحلو إن..."، "الشي الجميل في الشركة الجديدة..."، "هذي فرصة ما تتكرر..."
-
-أسلوب الكلام (للتحويل الصوتي):
-- جمل قصيرة وطبيعية كأنك تتكلم مع صاحبك
-- ابدأ بتعليق إيجابي قبل الإجابة
-- استخدم: "تدري..."، "الحين خليني أقولك..."، "بيني وبينك..."
-- الأرقام بالحروف دائماً
-- اختم بتشجيع أو سؤال ودي
-
-قواعد المعرفة:
-- أجب من المستندات المرفقة فقط
-- إذا ما لقيت الجواب، قل: "هذا السؤال يحتاج أرجع أتأكد منه، بس خلني أساعدك في شي ثاني"
-- لا تخترع معلومات
-
-عند ذكر الاسم:
-- استخدم اسمه: "يا هلا يا أحمد"، "أبشر يا محمد"
-
-تذكر: أنت لست روبوت، أنت زميل وصديق يبي الخير للشخص اللي قدامه.`;
+// System prompt for 4you assistant - kept for reference
+const SYSTEM_PROMPT = `أنت المستشار المعرفي "فور يو"، صديق وزميل داعم للموظفين المنتقلين من وزارة الصحة إلى الشركة القابضة.`;
 
 /**
- * Generate AI response with native PDF/document support
+ * Generate AI response using backend API
  * @param {string} question - User's question
  * @param {Array} sources - Array of source objects with content/fileData
  * @param {Array} chatHistory - Previous messages for context
@@ -46,109 +15,50 @@ const SYSTEM_PROMPT = `أنت المستشار المعرفي "فور يو"، ص
  */
 export async function generateAIResponse(question, sources, chatHistory = []) {
   try {
-    if (!API_KEY) {
-      console.error('Missing Google API Key - check REACT_APP_GOOGLE_API_KEY in .env');
-      return 'عذراً، حدث خطأ في الاتصال. مفتاح API غير موجود.';
-    }
+    // Prepare sources for API
+    const apiSources = sources
+      .filter(s => s.selected)
+      .map(source => ({
+        name: source.name,
+        content: source.content || null,
+        fileData: source.fileData || null,
+        mimeType: source.mimeType || null
+      }));
 
-    // Build parts array with documents - documents FIRST, then text prompt
-    const parts = [];
-    
-    // Add documents/sources FIRST (important for Gemini multimodal)
-    for (const source of sources) {
-      if (!source.selected) continue;
-      
-      // Check if source has binary file data (PDF, Excel, etc.)
-      if (source.fileData && source.mimeType) {
-        // Add as inlineData for native document processing (camelCase!)
-        parts.push({
-          inlineData: {
-            mimeType: source.mimeType,
-            data: source.fileData // base64 encoded
-          }
-        });
-        console.log(`Added file: ${source.name} (${source.mimeType})`);
-      } 
-      // Fallback to text content
-      else if (source.content) {
-        parts.push({
-          text: `[مصدر: ${source.name}]\n${source.content}`
-        });
-      }
-    }
-
-    if (parts.length === 0) {
+    if (apiSources.length === 0) {
       return 'ما عندي مصادر متاحة حالياً. لو تكرمت ارفع المصادر أول.';
     }
 
-    // Add the question with system instructions AFTER the documents
-    parts.push({
-      text: `${SYSTEM_PROMPT}\n\n---\n\nسؤال المستخدم: ${question}\n\nأجب على السؤال بناءً على المستندات المرفقة فقط. إذا لم تجد الإجابة، قل "اعتذر منك عزيزي، هذا الموضوع خارج نطاق المصادر المتاحة عندي."`
-    });
+    console.log('Sending request to backend with', apiSources.length, 'sources');
 
-    // Build request body - simplified structure for multimodal
-    const requestBody = {
-      contents: [
-        {
-          role: 'user',
-          parts: parts
-        }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
+    // Call backend API
+    const response = await fetch(`${API_BASE}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-      ]
-    };
-
-    console.log('Sending request to Gemini with', parts.length, 'parts');
-
-    // Call Gemini API with document vision support
-    const response = await fetch(
-      `${API_BASE}/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      }
-    );
+      body: JSON.stringify({
+        question: question,
+        sources: apiSources,
+        sessionId: localStorage.getItem('4you_session_id') || null
+      })
+    });
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('Gemini API Error:', error);
-      
-      // Handle specific errors
-      if (error.error?.code === 429) {
-        return 'النظام مشغول حالياً. حاول مرة ثانية بعد قليل.';
-      }
-      if (error.error?.code === 400) {
-        console.error('Bad request - check payload structure:', error.error?.message);
-        return 'عذراً، حدث خطأ في معالجة الملف. حاول مرة ثانية.';
-      }
-      
+      console.error('Backend API Error:', error);
       return 'عذراً، حدث خطأ. حاول مرة ثانية.';
     }
 
     const result = await response.json();
-    console.log('Gemini response received:', result?.candidates?.[0]?.finishReason);
     
-    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      console.log('Empty response from API:', result);
-      return 'عذراً، ما قدرت أجد إجابة. حاول تسأل بطريقة ثانية.';
+    // Save session ID for future requests
+    if (result.sessionId) {
+      localStorage.setItem('4you_session_id', result.sessionId);
     }
 
-    return text.trim();
+    console.log('Received response from backend');
+    return result.response || 'عذراً، ما قدرت أجد إجابة. حاول تسأل بطريقة ثانية.';
 
   } catch (error) {
     console.error('AI Response Error:', error);
