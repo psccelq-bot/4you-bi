@@ -423,12 +423,13 @@ function App() {
   };
 
   // Clear all data
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     if (window.confirm('هل أنت متأكد من مسح كافة سجلات المنصة؟')) {
       setSources([]);
       setAdvisorMessages(getInitialAdvisorMessages());
       setRepositoryMessages(getInitialRepositoryMessages());
       setSelectedRepoSource(null);
+      await clearAllSources(); // Clear IndexedDB
       toast.success('تم مسح جميع البيانات');
     }
   };
