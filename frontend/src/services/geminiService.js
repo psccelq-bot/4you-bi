@@ -1,13 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
 
 // Initialize the Gemini AI client
+let aiClient = null;
+
 const getAIClient = () => {
+  if (aiClient) return aiClient;
+  
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   if (!apiKey) {
     console.error('Missing REACT_APP_GEMINI_API_KEY');
     return null;
   }
-  return new GoogleGenAI({ apiKey });
+  
+  aiClient = new GoogleGenAI({ apiKey });
+  return aiClient;
 };
 
 /**
@@ -22,23 +28,32 @@ export async function generateSpeech(text) {
       throw new Error('Gemini API not configured');
     }
 
+    // Use the TTS preview model
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ parts: [{ text: text }] }],
+      contents: [{ 
+        parts: [{ text: text }] 
+      }],
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { 
-              voiceName: 'Kore' // Arabic-friendly voice
+              voiceName: 'Kore' // Clear voice suitable for Arabic
             },
           },
         },
       },
     });
 
-    // Extract base64 audio data
+    // Extract base64 audio data from response
     const audioData = response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!audioData) {
+      console.warn('No audio data in response:', response);
+      return undefined;
+    }
+    
     return audioData;
   } catch (error) {
     console.error('Gemini TTS Error:', error);
@@ -52,12 +67,17 @@ export async function generateSpeech(text) {
  * @returns {Uint8Array} - Raw PCM bytes
  */
 export function decodePCM(base64Data) {
-  const binaryString = atob(base64Data);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  try {
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (error) {
+    console.error('PCM decode error:', error);
+    return new Uint8Array(0);
   }
-  return bytes;
 }
 
 /**
@@ -69,19 +89,30 @@ export function decodePCM(base64Data) {
  * @returns {Promise<AudioBuffer>} - Decoded audio buffer ready to play
  */
 export async function decodeAudioData(pcmData, audioContext, sampleRate = 24000, numChannels = 1) {
-  // PCM data is 16-bit signed integers (2 bytes per sample)
-  const numSamples = pcmData.length / 2;
-  const audioBuffer = audioContext.createBuffer(numChannels, numSamples, sampleRate);
-  const channelData = audioBuffer.getChannelData(0);
+  try {
+    // PCM data is 16-bit signed integers (2 bytes per sample)
+    const numSamples = Math.floor(pcmData.length / 2);
+    
+    if (numSamples === 0) {
+      throw new Error('No audio samples to decode');
+    }
+    
+    const audioBuffer = audioContext.createBuffer(numChannels, numSamples, sampleRate);
+    const channelData = audioBuffer.getChannelData(0);
 
-  // Convert 16-bit PCM to float32 (-1.0 to 1.0)
-  const dataView = new DataView(pcmData.buffer);
-  for (let i = 0; i < numSamples; i++) {
-    // Read 16-bit signed integer (little-endian)
-    const int16 = dataView.getInt16(i * 2, true);
-    // Normalize to float32 range
-    channelData[i] = int16 / 32768;
+    // Convert 16-bit PCM to float32 (-1.0 to 1.0)
+    const dataView = new DataView(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength);
+    
+    for (let i = 0; i < numSamples; i++) {
+      // Read 16-bit signed integer (little-endian)
+      const int16 = dataView.getInt16(i * 2, true);
+      // Normalize to float32 range
+      channelData[i] = int16 / 32768;
+    }
+
+    return audioBuffer;
+  } catch (error) {
+    console.error('Audio decode error:', error);
+    throw error;
   }
-
-  return audioBuffer;
 }
