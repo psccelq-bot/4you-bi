@@ -11,14 +11,30 @@ import {
   SourceCategory,
   SourceType,
   SourceTheme,
-  initialSources,
-  getInitialAdvisorMessages,
-  getInitialRepositoryMessages,
   generateId
 } from '@/data/mockData';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
-import { generateAIResponse } from '@/services/geminiAI';
+import { generateAIResponse, processFileForAI } from '@/services/geminiAI';
+
+// Initial welcome messages
+const getInitialAdvisorMessages = () => [
+  {
+    id: 'w-adv',
+    role: 'assistant',
+    text: 'أهلاً وسهلاً فيك. أنا فور يو، مساعدك المعرفي. ارفع المستندات اللي تبي تستفسر عنها، وأنا جاهز أساعدك.',
+    timestamp: new Date()
+  }
+];
+
+const getInitialRepositoryMessages = () => [
+  {
+    id: 'w-repo',
+    role: 'assistant',
+    text: 'أهلاً فيك في المكتبة الرقمية. اختر المستند اللي تبي تستفسر عنه.',
+    timestamp: new Date()
+  }
+];
 
 function App() {
   // State Management
