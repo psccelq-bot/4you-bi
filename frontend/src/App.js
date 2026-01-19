@@ -14,13 +14,11 @@ import {
   initialSources,
   getInitialAdvisorMessages,
   getInitialRepositoryMessages,
-  generateId,
-  searchInSources,
-  OUT_OF_SCOPE_RESPONSE,
-  NO_SOURCES_RESPONSE
+  generateId
 } from '@/data/mockData';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
+import { generateAIResponse } from '@/services/geminiAI';
 
 function App() {
   // State Management
