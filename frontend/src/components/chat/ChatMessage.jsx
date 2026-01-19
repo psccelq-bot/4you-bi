@@ -62,12 +62,16 @@ const ChatMessage = ({
             </span>
           </div>
         )}
+
+        {/* Assistant Message Footer */}
+        {isAssistant && message.text && (
           <div className="mt-4 flex items-center justify-between border-t border-foreground/5 pt-3">
             <Button
               onClick={() => onToggleSpeak(message.id, message.text)}
               variant={isPlaying ? 'premium' : 'glass'}
               size="icon-sm"
               className="rounded-xl"
+              data-testid="tts-button"
             >
               {isPreparing ? (
                 <div className="w-4 h-4 bg-primary animate-pulse rounded-full" />
