@@ -200,7 +200,7 @@ async def chat_with_ai(request: ChatRequest):
         for temp_file in temp_files:
             try:
                 os.unlink(temp_file)
-            except:
+            except Exception:
                 pass
         
         logger.info(f"Received response: {response_text[:100]}...")
@@ -216,13 +216,91 @@ async def chat_with_ai(request: ChatRequest):
         for temp_file in temp_files:
             try:
                 os.unlink(temp_file)
-            except:
+            except Exception:
                 pass
         
         return ChatResponse(
             response="عذراً، حدث خطأ. حاول مرة ثانية.",
             sessionId=request.sessionId or str(uuid.uuid4())
         )
+
+
+# TTS Models
+class TTSRequest(BaseModel):
+    text: str
+
+class TTSResponse(BaseModel):
+    audio: Optional[str] = None  # Base64 encoded audio
+    error: Optional[str] = None
+
+
+@api_router.post("/tts", response_model=TTSResponse)
+async def text_to_speech(request: TTSRequest):
+    """Text-to-Speech endpoint using Google Gemini TTS"""
+    try:
+        import aiohttp
+        
+        # Use Google API key from frontend env or a dedicated TTS key
+        google_api_key = os.environ.get('GOOGLE_API_KEY')
+        
+        if not google_api_key:
+            # Try to read from frontend .env
+            frontend_env_path = Path(__file__).parent.parent / 'frontend' / '.env'
+            if frontend_env_path.exists():
+                with open(frontend_env_path, 'r') as f:
+                    for line in f:
+                        if line.startswith('REACT_APP_GOOGLE_API_KEY='):
+                            google_api_key = line.split('=', 1)[1].strip()
+                            break
+        
+        if not google_api_key:
+            logger.error("No Google API key found for TTS")
+            return TTSResponse(error="خدمة الصوت غير مُعدّة")
+        
+        # Call Gemini TTS API
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={google_api_key}",
+                json={
+                    "contents": [{
+                        "role": "user",
+                        "parts": [{"text": request.text}]
+                    }],
+                    "generationConfig": {
+                        "responseModalities": ["AUDIO"],
+                        "speechConfig": {
+                            "voiceConfig": {
+                                "prebuiltVoiceConfig": {
+                                    "voiceName": "Kore"
+                                }
+                            }
+                        }
+                    }
+                }
+            ) as response:
+                if response.status != 200:
+                    error_data = await response.json()
+                    logger.error(f"TTS API Error: {error_data}")
+                    
+                    # Check for quota error
+                    if response.status == 429:
+                        return TTSResponse(error="خدمة الصوت مشغولة حالياً")
+                    
+                    return TTSResponse(error="حدث خطأ في توليد الصوت")
+                
+                result = await response.json()
+                audio_data = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('inlineData', {}).get('data')
+                
+                if not audio_data:
+                    logger.error(f"No audio data in TTS response: {result}")
+                    return TTSResponse(error="لم يتم توليد الصوت")
+                
+                logger.info(f"TTS generated successfully, audio length: {len(audio_data)}")
+                return TTSResponse(audio=audio_data)
+                
+    except Exception as e:
+        logger.error(f"TTS error: {e}")
+        return TTSResponse(error="حدث خطأ في خدمة الصوت")
 
 # Include the router in the main app
 app.include_router(api_router)
