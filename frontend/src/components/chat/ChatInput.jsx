@@ -32,10 +32,10 @@ const ChatInput = ({
 
   const getPlaceholder = () => {
     if (activeView === SourceCategory.ADVISOR) {
-      return 'تحدث مع المستشار المعرفي alhootah...';
+      return 'اسأل 4you عن المصادر المتاحة...';
     }
     if (selectedRepoSource) {
-      return `تحليل: ${selectedRepoSource.name}...`;
+      return `استفسر عن: ${selectedRepoSource.name}...`;
     }
     return 'بانتظار اختيار المصدر...';
   };
