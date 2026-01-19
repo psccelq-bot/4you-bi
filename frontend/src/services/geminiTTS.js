@@ -1,7 +1,8 @@
 // Gemini TTS Service - High Quality Female Arabic Voice
 // Uses REST API directly for better compatibility
 
-const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+// API Key (fallback to hardcoded for development)
+const API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || 'AIzaSyDP86IJ8ibRiJl09OT0UTd1QAFsUASzeWw';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /**
