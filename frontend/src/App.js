@@ -159,83 +159,60 @@ function App() {
     }
   };
 
-  // Stop current audio playback
-  const stopCurrentAudio = useCallback(() => {
-    if (currentAudioSourceRef.current) {
-      try {
-        currentAudioSourceRef.current.stop();
-      } catch (e) {
-        // Already stopped
-      }
-      currentAudioSourceRef.current = null;
-    }
+  // Stop current speech
+  const stopCurrentSpeech = useCallback(() => {
+    stopSpeech();
+    currentUtteranceRef.current = null;
     setCurrentPlayingId(null);
     setIsPreparingAudio(null);
   }, []);
 
-  // Handle text-to-speech using TTS API
-  const handleToggleSpeak = useCallback(async (msgId, text) => {
+  // Handle text-to-speech using Web Speech API
+  const handleToggleSpeak = useCallback((msgId, text) => {
     // If same message is playing, stop it
     if (currentPlayingId === msgId) {
-      stopCurrentAudio();
+      stopCurrentSpeech();
       return;
     }
 
-    // Stop any current playback
-    stopCurrentAudio();
+    // Stop any current speech
+    stopCurrentSpeech();
 
-    // Initialize AudioContext if needed (must be done after user interaction)
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    // Resume AudioContext if suspended (browser policy)
-    if (audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
+    // Check if speech synthesis is supported
+    if (!isSpeechSynthesisSupported()) {
+      toast.error('متصفحك لا يدعم النطق الصوتي');
+      return;
     }
 
     setIsPreparingAudio(msgId);
 
-    try {
-      // Call TTS API
-      const audioBase64 = await generateSpeech(text);
-
-      if (audioBase64) {
-        const ctx = audioContextRef.current;
-        
-        // Decode audio data (MP3 format)
-        const arrayBuffer = decodePCM(audioBase64);
-        const audioBuffer = await decodeAudioData(arrayBuffer, ctx);
-
-        // Stop preparing indicator
+    // Start speaking
+    const utterance = speak(
+      text,
+      { lang: 'ar-SA', rate: 0.9 },
+      // onStart
+      () => {
         setIsPreparingAudio(null);
         setCurrentPlayingId(msgId);
-
-        // Create and play audio source
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        
-        source.onended = () => {
-          setCurrentPlayingId(null);
-          currentAudioSourceRef.current = null;
-        };
-
-        currentAudioSourceRef.current = source;
-        source.start(0);
-        
-      } else {
-        throw new Error('No audio data received');
+      },
+      // onEnd
+      () => {
+        setCurrentPlayingId(null);
+        currentUtteranceRef.current = null;
+      },
+      // onError
+      (error) => {
+        console.error('Speech error:', error);
+        setIsPreparingAudio(null);
+        setCurrentPlayingId(null);
+        toast.error('عذراً، لم نتمكن من تشغيل الصوت', {
+          description: 'تأكد من أن متصفحك يدعم النطق الصوتي'
+        });
       }
-    } catch (error) {
-      console.error('TTS Error:', error);
-      setIsPreparingAudio(null);
-      setCurrentPlayingId(null);
-      toast.error('عذراً، لم نتمكن من تشغيل الصوت', {
-        description: 'حدث خطأ أثناء توليد الصوت'
-      });
-    }
-  }, [currentPlayingId, stopCurrentAudio]);
+    );
+
+    currentUtteranceRef.current = utterance;
+  }, [currentPlayingId, stopCurrentSpeech]);
 
   // File upload handler
   const handleFileUpload = (event, category) => {
