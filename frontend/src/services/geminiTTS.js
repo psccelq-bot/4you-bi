@@ -27,6 +27,7 @@ export async function generateSpeech(text) {
         },
         body: JSON.stringify({
           contents: [{
+            role: 'user',
             parts: [{ text: text }]
           }],
           generationConfig: {
