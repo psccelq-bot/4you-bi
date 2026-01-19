@@ -150,14 +150,6 @@ function App() {
     }
   };
 
-    setIsTyping(false);
-
-    // Auto-speak if enabled
-    if (isAutoSpeak) {
-      handleToggleSpeak(assistantMessage.id, responseText);
-    }
-  };
-
   // Stop current audio playback
   const stopCurrentAudio = useCallback(() => {
     if (currentAudioSourceRef.current) {
