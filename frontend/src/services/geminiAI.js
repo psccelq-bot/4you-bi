@@ -146,5 +146,5 @@ export async function fetchFileFromURL(url) {
  * Check if Gemini AI is configured
  */
 export function isAIConfigured() {
-  return !!API_KEY;
+  return !!API_BASE;
 }
