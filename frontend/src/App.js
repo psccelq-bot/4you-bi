@@ -242,6 +242,9 @@ function App() {
       setCurrentPlayingId(null);
       setIsPreparingAudio(null);
       currentUtteranceRef.current = null;
+      toast.error('عذراً، لم نتمكن من تشغيل الصوت', {
+        description: 'تأكد من أن متصفحك يدعم النطق الصوتي'
+      });
     };
 
     // Store reference and speak
