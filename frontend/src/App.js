@@ -37,8 +37,8 @@ const getInitialRepositoryMessages = () => [
 ];
 
 function App() {
-  // State Management
-  const [sources, setSources] = useLocalStorage('4you_sources', initialSources);
+  // State Management - Start with empty sources (user uploads their own)
+  const [sources, setSources] = useLocalStorage('4you_sources', []);
   const [advisorMessages, setAdvisorMessages] = useLocalStorage(
     '4you_advisor_messages',
     getInitialAdvisorMessages()
