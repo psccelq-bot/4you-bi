@@ -169,7 +169,7 @@ function App() {
     setIsPreparingAudio(null);
   }, []);
 
-  // Handle text-to-speech using Gemini TTS API
+  // Handle text-to-speech using TTS API
   const handleToggleSpeak = useCallback(async (msgId, text) => {
     // If same message is playing, stop it
     if (currentPlayingId === msgId) {
@@ -182,9 +182,7 @@ function App() {
 
     // Initialize AudioContext if needed (must be done after user interaction)
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ 
-        sampleRate: 24000 
-      });
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
 
     // Resume AudioContext if suspended (browser policy)
@@ -195,15 +193,15 @@ function App() {
     setIsPreparingAudio(msgId);
 
     try {
-      // Call Gemini TTS API
-      const audioData = await generateSpeech(text);
+      // Call TTS API
+      const audioBase64 = await generateSpeech(text);
 
-      if (audioData) {
+      if (audioBase64) {
         const ctx = audioContextRef.current;
         
-        // Decode PCM data
-        const pcmBytes = decodePCM(audioData);
-        const audioBuffer = await decodeAudioData(pcmBytes, ctx, 24000, 1);
+        // Decode audio data (MP3 format)
+        const arrayBuffer = decodePCM(audioBase64);
+        const audioBuffer = await decodeAudioData(arrayBuffer, ctx);
 
         // Stop preparing indicator
         setIsPreparingAudio(null);
@@ -226,7 +224,7 @@ function App() {
         throw new Error('No audio data received');
       }
     } catch (error) {
-      console.error('Gemini TTS Error:', error);
+      console.error('TTS Error:', error);
       setIsPreparingAudio(null);
       setCurrentPlayingId(null);
       toast.error('عذراً، لم نتمكن من تشغيل الصوت', {
