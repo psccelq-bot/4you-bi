@@ -52,6 +52,8 @@ function App() {
   const chatEndRef = useRef(null);
   const advisorFileInputRef = useRef(null);
   const repositoryFileInputRef = useRef(null);
+  const speechSynthRef = useRef(null);
+  const currentUtteranceRef = useRef(null);
 
   // Scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
