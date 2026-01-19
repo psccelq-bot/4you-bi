@@ -110,5 +110,5 @@ export function decodeAudioData(pcmData, audioContext, sampleRate = 24000, numCh
  * Check if Gemini TTS is configured
  */
 export function isConfigured() {
-  return !!API_KEY;
+  return !!API_BASE;
 }
