@@ -19,7 +19,7 @@ import {
   generateId
 } from '@/data/mockData';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { speak, stopSpeech, preloadVoices, isSpeechSynthesisSupported } from '@/services/speechService';
+import { generateSpeech, decodePCM, decodeAudioData, isConfigured } from '@/services/geminiTTS';
 
 function App() {
   // State Management
