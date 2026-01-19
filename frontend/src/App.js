@@ -303,34 +303,70 @@ function App() {
   };
 
   // Add external link
-  const handleAddLink = (category) => {
+  const handleAddLink = async (category) => {
     const input = category === SourceCategory.ADVISOR ? advLinkInput : repoLinkInput;
     if (!input.trim()) return;
 
-    const newSource = {
-      id: generateId(),
-      name: 'رابط خارجي',
-      type: SourceType.LINK,
-      category: category,
-      content: input,
-      mimeType: 'text/url',
-      selected: true,
-      theme: SourceTheme.CYAN,
-      createdAt: new Date().toISOString()
-    };
+    // Check if it's a file URL (PDF, etc.)
+    const isFileUrl = /\.(pdf|xlsx|xls|csv|doc|docx|png|jpg|jpeg)$/i.test(input);
 
-    setSources((prev) => [...prev, newSource]);
+    if (isFileUrl) {
+      toast.loading('جاري تحميل الملف من الرابط...', { id: 'link-upload' });
+      
+      try {
+        const { fetchFileFromURL } = await import('@/services/geminiAI');
+        const { fileData, mimeType } = await fetchFileFromURL(input);
+        
+        const newSource = {
+          id: generateId(),
+          name: input.split('/').pop()?.replace(/\.[^/.]+$/, '') || 'ملف من رابط',
+          type: mimeType.includes('pdf') ? SourceType.PDF : SourceType.LINK,
+          category: category,
+          content: '',
+          fileData: fileData,
+          mimeType: mimeType,
+          selected: true,
+          theme: SourceTheme.CYAN,
+          createdAt: new Date().toISOString()
+        };
+
+        setSources((prev) => [...prev, newSource]);
+        toast.success('تم تحميل الملف بنجاح', { id: 'link-upload' });
+      } catch (error) {
+        console.error('Link fetch error:', error);
+        toast.error('لم نتمكن من تحميل الملف من الرابط', { id: 'link-upload' });
+      }
+    } else {
+      // Regular text link
+      const newSource = {
+        id: generateId(),
+        name: 'رابط خارجي',
+        type: SourceType.LINK,
+        category: category,
+        content: input,
+        mimeType: 'text/url',
+        selected: true,
+        theme: SourceTheme.CYAN,
+        createdAt: new Date().toISOString()
+      };
+
+      setSources((prev) => [...prev, newSource]);
+    }
+
     category === SourceCategory.ADVISOR ? setAdvLinkInput('') : setRepoLinkInput('');
   };
 
   // Add manual text
   const handleAddManualText = (category) => {
+    const text = prompt('أدخل النص الذي تريد إضافته:');
+    if (!text?.trim()) return;
+
     const newSource = {
       id: generateId(),
       name: `نص مضاف (${new Date().toLocaleTimeString('ar-SA')})`,
       type: SourceType.TEXT,
       category: category,
-      content: 'نص مضاف يدوياً',
+      content: text,
       mimeType: 'text/plain',
       selected: true,
       theme: SourceTheme.CYAN,
@@ -351,10 +387,11 @@ function App() {
   // Clear all data
   const handleClearAllData = () => {
     if (window.confirm('هل أنت متأكد من مسح كافة سجلات المنصة؟')) {
-      setSources(initialSources);
+      setSources([]);
       setAdvisorMessages(getInitialAdvisorMessages());
       setRepositoryMessages(getInitialRepositoryMessages());
       setSelectedRepoSource(null);
+      toast.success('تم مسح جميع البيانات');
     }
   };
 
