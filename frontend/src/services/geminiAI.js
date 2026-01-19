@@ -66,7 +66,7 @@ ${sourcesContent}
 
     // Call Gemini API
     const response = await fetch(
-      `${API_BASE}/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+      `${API_BASE}/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: {
