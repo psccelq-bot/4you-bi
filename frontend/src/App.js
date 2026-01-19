@@ -68,40 +68,32 @@ function App() {
     scrollToBottom();
   }, [advisorMessages, repositoryMessages, isTyping, scrollToBottom]);
 
-  // Helper to generate mock response
-  const generateMockResponse = (userText, isAdvisor) => {
-    const lowerText = userText.toLowerCase();
-    const responses = isAdvisor ? mockAdvisorResponses : mockRepositoryResponses;
-
-    if (isAdvisor) {
-      if (lowerText.includes('راتب') || lowerText.includes('معاش')) {
-        return responses.salary;
-      }
-      if (lowerText.includes('مزايا') || lowerText.includes('فوائد') || lowerText.includes('تأمين')) {
-        return responses.benefits;
-      }
-      if (lowerText.includes('انتقال') || lowerText.includes('نقل')) {
-        return responses.transfer;
-      }
-      if (lowerText.includes('تدريب') || lowerText.includes('تأهيل')) {
-        return responses.training;
-      }
-      if (lowerText.includes('أهلا') || lowerText.includes('مرحبا') || lowerText.includes('اسمي')) {
-        return responses.greeting;
-      }
-    } else {
-      if (lowerText.includes('ملخص') || lowerText.includes('تلخيص')) {
-        return responses.summary;
-      }
-      if (lowerText.includes('بحث') || lowerText.includes('ابحث')) {
-        return responses.search;
-      }
-      if (lowerText.includes('استخرج') || lowerText.includes('استخراج')) {
-        return responses.extract;
-      }
+  // Generate response based on sources only - 4you strict rules
+  const generateSourceBasedResponse = (userText, relevantSources) => {
+    // Check if it's a greeting
+    const greetingWords = ['أهلا', 'مرحبا', 'السلام', 'صباح', 'مساء', 'hello', 'hi'];
+    const isGreeting = greetingWords.some(word => 
+      userText.toLowerCase().includes(word.toLowerCase())
+    );
+    
+    if (isGreeting) {
+      return 'أهلا بك، يسعدني التحدث معك. كيف يمكنني مساعدتك بناء على المصادر المتاحة؟';
     }
 
-    return responses.default;
+    // Check if sources exist
+    if (!relevantSources || relevantSources.length === 0) {
+      return NO_SOURCES_RESPONSE;
+    }
+
+    // Search in sources
+    const answer = searchInSources(userText, relevantSources);
+    
+    if (answer) {
+      return answer;
+    }
+
+    // No answer found in sources
+    return OUT_OF_SCOPE_RESPONSE;
   };
 
   // Handle sending message
