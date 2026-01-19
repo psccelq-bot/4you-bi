@@ -68,16 +68,27 @@ function App() {
     scrollToBottom();
   }, [advisorMessages, repositoryMessages, isTyping, scrollToBottom]);
 
-  // Generate response based on sources only - 4you strict rules
+  // Generate TTS-optimized response based on sources only
   const generateSourceBasedResponse = (userText, relevantSources) => {
-    // Check if it's a greeting
-    const greetingWords = ['أهلا', 'مرحبا', 'السلام', 'صباح', 'مساء', 'hello', 'hi'];
+    // Check if it's a greeting - respond naturally
+    const greetingWords = ['أهلا', 'مرحبا', 'السلام', 'صباح', 'مساء', 'شكرا', 'hello', 'hi', 'thanks'];
     const isGreeting = greetingWords.some(word => 
       userText.toLowerCase().includes(word.toLowerCase())
     );
     
     if (isGreeting) {
-      return 'أهلا بك، يسعدني التحدث معك. كيف يمكنني مساعدتك بناء على المصادر المتاحة؟';
+      // Natural TTS-friendly greeting responses
+      const greetings = [
+        'أهلاً وسهلاً فيك. كيف أقدر أساعدك اليوم؟',
+        'يا هلا فيك. خبرني شو تبي تعرف من المصادر المتاحة؟',
+        'أهلاً. أنا هنا لمساعدتك. وش استفسارك؟'
+      ];
+      return greetings[Math.floor(Math.random() * greetings.length)];
+    }
+
+    // Check for thank you
+    if (userText.includes('شكر') || userText.toLowerCase().includes('thank')) {
+      return 'العفو، هذا واجبي. إذا عندك أي استفسار ثاني، أنا موجود.';
     }
 
     // Check if sources exist
