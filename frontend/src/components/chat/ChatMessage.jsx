@@ -21,6 +21,7 @@ const ChatMessage = ({
         "flex animate-fade-in-up",
         isAssistant ? 'items-start gap-4' : 'flex-col items-end'
       )}
+      data-testid={isAssistant ? "assistant-message" : "user-message"}
     >
       {/* Avatar for Assistant */}
       {isAssistant && (
@@ -30,6 +31,13 @@ const ChatMessage = ({
           ) : (
             <BotIcon className="w-5 h-5 text-primary" />
           )}
+        </div>
+      )}
+
+      {/* User Avatar */}
+      {!isAssistant && (
+        <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center mb-2 flex-shrink-0">
+          <UserIcon className="w-4 h-4 text-primary" />
         </div>
       )}
 
@@ -46,8 +54,14 @@ const ChatMessage = ({
           {message.text}
         </p>
 
-        {/* Assistant Message Footer */}
-        {isAssistant && message.text && (
+        {/* User Message Timestamp */}
+        {!isAssistant && message.text && (
+          <div className="mt-2 text-left">
+            <span className="text-[9px] font-black text-foreground/30 uppercase">
+              {formatTime(message.timestamp)}
+            </span>
+          </div>
+        )}
           <div className="mt-4 flex items-center justify-between border-t border-foreground/5 pt-3">
             <Button
               onClick={() => onToggleSpeak(message.id, message.text)}
