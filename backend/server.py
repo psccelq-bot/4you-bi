@@ -240,21 +240,11 @@ async def text_to_speech(request: TTSRequest):
     try:
         import aiohttp
         
-        # Use Google API key from frontend env or a dedicated TTS key
+        # Use Google API key from backend environment variable only
         google_api_key = os.environ.get('GOOGLE_API_KEY')
         
         if not google_api_key:
-            # Try to read from frontend .env
-            frontend_env_path = Path(__file__).parent.parent / 'frontend' / '.env'
-            if frontend_env_path.exists():
-                with open(frontend_env_path, 'r') as f:
-                    for line in f:
-                        if line.startswith('REACT_APP_GOOGLE_API_KEY='):
-                            google_api_key = line.split('=', 1)[1].strip()
-                            break
-        
-        if not google_api_key:
-            logger.error("No Google API key found for TTS")
+            logger.error("GOOGLE_API_KEY not configured in backend/.env")
             return TTSResponse(error="خدمة الصوت غير مُعدّة")
         
         # Call Gemini TTS API
