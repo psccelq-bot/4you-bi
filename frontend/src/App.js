@@ -154,27 +154,91 @@ function App() {
     }
   };
 
-  // Handle text-to-speech (mock)
-  const handleToggleSpeak = (msgId, text) => {
+  // Initialize Speech Synthesis
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      speechSynthRef.current = window.speechSynthesis;
+    }
+    return () => {
+      // Cleanup: stop any playing speech
+      if (speechSynthRef.current) {
+        speechSynthRef.current.cancel();
+      }
+    };
+  }, []);
+
+  // Stop current speech
+  const stopSpeech = useCallback(() => {
+    if (speechSynthRef.current) {
+      speechSynthRef.current.cancel();
+    }
+    currentUtteranceRef.current = null;
+    setCurrentPlayingId(null);
+    setIsPreparingAudio(null);
+  }, []);
+
+  // Handle text-to-speech (Real implementation)
+  const handleToggleSpeak = useCallback((msgId, text) => {
+    // If same message is playing, stop it
     if (currentPlayingId === msgId) {
-      setCurrentPlayingId(null);
+      stopSpeech();
+      return;
+    }
+
+    // Stop any current speech
+    stopSpeech();
+
+    // Check if speech synthesis is available
+    if (!speechSynthRef.current) {
+      console.warn('Speech synthesis not supported in this browser');
       return;
     }
 
     setIsPreparingAudio(msgId);
 
-    // Mock audio preparation
-    setTimeout(() => {
+    // Create utterance
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ar-SA'; // Arabic - Saudi Arabia
+    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Get available Arabic voices
+    const voices = speechSynthRef.current.getVoices();
+    const arabicVoice = voices.find(voice => 
+      voice.lang.startsWith('ar') || voice.name.toLowerCase().includes('arabic')
+    );
+    
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
       setIsPreparingAudio(null);
       setCurrentPlayingId(msgId);
+    };
 
-      // Mock audio duration based on text length
-      const duration = Math.min(text.length * 50, 5000);
-      setTimeout(() => {
-        setCurrentPlayingId(null);
-      }, duration);
-    }, 500);
-  };
+    utterance.onend = () => {
+      setCurrentPlayingId(null);
+      currentUtteranceRef.current = null;
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event.error);
+      setCurrentPlayingId(null);
+      setIsPreparingAudio(null);
+      currentUtteranceRef.current = null;
+    };
+
+    // Store reference and speak
+    currentUtteranceRef.current = utterance;
+    
+    // Small delay to ensure voices are loaded
+    setTimeout(() => {
+      speechSynthRef.current.speak(utterance);
+    }, 100);
+  }, [currentPlayingId, stopSpeech]);
 
   // File upload handler
   const handleFileUpload = (event, category) => {
