@@ -158,6 +158,19 @@ function App() {
   useEffect(() => {
     if ('speechSynthesis' in window) {
       speechSynthRef.current = window.speechSynthesis;
+      
+      // Load voices - they may not be available immediately
+      const loadVoices = () => {
+        const voices = speechSynthRef.current.getVoices();
+        console.log('Available voices:', voices.length);
+      };
+      
+      loadVoices();
+      
+      // Chrome requires this event to get voices
+      if (speechSynthRef.current.onvoiceschanged !== undefined) {
+        speechSynthRef.current.onvoiceschanged = loadVoices;
+      }
     }
     return () => {
       // Cleanup: stop any playing speech
